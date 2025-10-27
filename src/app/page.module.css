@@ -1,0 +1,301 @@
+.page {
+  min-height: 100vh;
+  padding: 48px 20px 64px;
+  background: radial-gradient(circle at top left, #1f2a44, #0b1120 50%, #060912 100%);
+  color: #f8fafc;
+}
+
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin-top: 8px;
+  max-width: 520px;
+  color: rgba(226, 232, 240, 0.8);
+  line-height: 1.4;
+}
+
+.selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: rgba(226, 232, 240, 0.9);
+  min-width: 220px;
+}
+
+.selector span {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.selector select {
+  appearance: none;
+  background: rgba(15, 30, 57, 0.9);
+  border: 1px solid rgba(61, 86, 146, 0.8);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f8fafc;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.selector select:focus {
+  outline: 2px solid rgba(96, 165, 250, 0.6);
+  outline-offset: 1px;
+}
+
+.chartCard,
+.subscriptionCard {
+  background: rgba(10, 17, 34, 0.75);
+  border: 1px solid rgba(30, 41, 69, 0.8);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 45px -24px rgba(15, 23, 42, 0.9);
+}
+
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.chartHeader h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.chartHeader p {
+  color: rgba(148, 163, 184, 0.75);
+  font-size: 0.95rem;
+}
+
+.chartWrapper {
+  margin-top: 16px;
+  background: rgba(8, 16, 31, 0.9);
+  border: 1px solid rgba(37, 55, 94, 0.85);
+  border-radius: 14px;
+  padding: 12px;
+  height: 320px;
+  display: flex;
+}
+
+.chartRoot {
+  position: relative;
+  flex: 1;
+}
+
+.chartContainer {
+  position: absolute;
+  inset: 0;
+}
+
+.chartPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(148, 163, 184, 0.85);
+  font-size: 0.95rem;
+  background: rgba(10, 17, 34, 0.75);
+  border-radius: inherit;
+  border: 1px dashed rgba(59, 130, 246, 0.25);
+  pointer-events: none;
+}
+
+.priceSnapshot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  background: rgba(15, 30, 57, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 160px;
+}
+
+.priceLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.priceValue {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #f0fdf4;
+}
+
+.timeValue {
+  font-size: 0.85rem;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.subscriptionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusRow h2 {
+  font-size: 1.2rem;
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.connected {
+  color: #34d399;
+}
+
+.pending {
+  color: #facc15;
+}
+
+.statusText {
+  font-size: 0.9rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.errorMessage {
+  margin: 12px 0;
+  color: #fda4af;
+  font-size: 0.9rem;
+}
+
+.eventList {
+  margin-top: 18px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.eventPlaceholder {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: rgba(148, 163, 184, 0.75);
+  background: rgba(13, 25, 46, 0.7);
+  border-radius: 12px;
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+}
+
+.eventItem {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: rgba(13, 25, 46, 0.75);
+  border: 1px solid rgba(37, 55, 94, 0.7);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.eventSymbol {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.eventPrice {
+  font-variant-numeric: tabular-nums;
+  color: #f0fdf4;
+}
+
+.eventTime {
+  font-size: 0.85rem;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+@media (max-width: 820px) {
+  .header {
+    align-items: flex-start;
+  }
+
+  .priceSnapshot {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .eventItem {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .eventTime {
+    justify-self: flex-end;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding: 32px 14px 48px;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .chartWrapper {
+    height: 260px;
+  }
+
+  .selector {
+    width: 100%;
+  }
+
+  .eventItem {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .eventTime {
+    justify-self: flex-start;
+  }
+}
