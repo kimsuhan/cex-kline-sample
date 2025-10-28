@@ -1,8 +1,8 @@
-import binance, { type Binance } from "binance-api-node";
+import binance from "binance-api-node";
 
-let client: Binance | null = null;
+let client: any = null;
 
-export function getBinanceClient(): Binance {
+export function getBinanceClient() {
   if (!client) {
     client = binance();
   }

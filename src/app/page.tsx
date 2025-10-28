@@ -1,12 +1,33 @@
 "use client";
 
 import { Chart, type ChartDataset } from "chart.js";
-import type { CandlestickDataPoint } from "chartjs-chart-financial";
 import { createClient, type Client } from "graphql-ws";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ensureFinancialChartRegistered } from "./lib/registerFinancialChart";
 import styles from "./page.module.css";
+
+type CandlestickDataPoint = {
+  x: number; // Timestamp or numerical x-coordinate
+  o: number; // Open value
+  h: number; // High value
+  l: number; // Low value
+  c: number; // Close value
+};
+
+// Extended dataset type for candlestick charts
+type CandlestickDataset = ChartDataset<
+  "candlestick",
+  CandlestickDataPoint[]
+> & {
+  upColor?: string;
+  downColor?: string;
+  borderColor?: string;
+  borderUpColor?: string;
+  borderDownColor?: string;
+  wickUpColor?: string;
+  wickDownColor?: string;
+};
 
 type Candle = {
   openTime: number;
@@ -78,7 +99,8 @@ const BINANCE_INTERVAL_MAP = {
   120: "2h",
   240: "4h",
 } as const;
-type BinanceInterval = (typeof BINANCE_INTERVAL_MAP)[keyof typeof BINANCE_INTERVAL_MAP];
+type BinanceInterval =
+  (typeof BINANCE_INTERVAL_MAP)[keyof typeof BINANCE_INTERVAL_MAP];
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -234,7 +256,9 @@ const normalizeBinanceSymbol = (symbol: string): string => {
   return normalized.endsWith("USDT") ? normalized : `${normalized}USDT`;
 };
 
-function mapBinanceRestCandle(payload: BinanceRestCandlePayload): Candle | null {
+function mapBinanceRestCandle(
+  payload: BinanceRestCandlePayload
+): Candle | null {
   const openTime = payload.openTime;
   const open = parseFloat(payload.open);
   const high = parseFloat(payload.high);
@@ -262,7 +286,9 @@ function mapBinanceRestCandle(payload: BinanceRestCandlePayload): Candle | null 
   } satisfies Candle;
 }
 
-function mapBinanceStreamCandle(payload: BinanceStreamCandlePayload): Candle | null {
+function mapBinanceStreamCandle(
+  payload: BinanceStreamCandlePayload
+): Candle | null {
   const openTime = payload.startTime;
   const open = parseFloat(payload.open);
   const high = parseFloat(payload.high);
@@ -324,11 +350,13 @@ function MinuteChart({
 }: MinuteChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const chartRef = useRef<Chart<"candlestick"> | null>(null);
+  const chartRef = useRef<Chart | null>(null);
   const initialRenderRef = useRef(true);
   const lastSymbolRef = useRef<string | null>(null);
   const lastIntervalRef = useRef<number | null>(null);
-  const zoomCallbackRef = useRef<typeof onZoomRangeChange>();
+  const zoomCallbackRef = useRef<typeof onZoomRangeChange | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     zoomCallbackRef.current = onZoomRangeChange;
@@ -344,9 +372,9 @@ function MinuteChart({
 
     let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
-    let chartInstance: Chart<"candlestick"> | null = null;
+    let chartInstance: Chart | null = null;
 
-    const notifyRangeChange = (chart: Chart<"candlestick">) => {
+    const notifyRangeChange = (chart: Chart) => {
       const callback = zoomCallbackRef.current;
       if (!callback) {
         return;
@@ -382,7 +410,7 @@ function MinuteChart({
               borderDownColor: "#fb7185",
               wickUpColor: "#34d399",
               wickDownColor: "#fb7185",
-            },
+            } as CandlestickDataset,
           ],
         },
         options: {
@@ -433,11 +461,7 @@ function MinuteChart({
                 },
                 mode: "x",
               },
-              onZoomComplete: ({ chart: zoomedChart }) =>
-                notifyRangeChange(zoomedChart as Chart<"candlestick">),
-              onPanComplete: ({ chart: pannedChart }) =>
-                notifyRangeChange(pannedChart as Chart<"candlestick">),
-            },
+            } as Record<string, unknown>,
           },
           scales: {
             x: {
@@ -481,6 +505,16 @@ function MinuteChart({
       chartRef.current = chart;
       chartInstance = chart;
 
+      // Add zoom event listeners after chart creation
+      if (chart.options.plugins?.zoom) {
+        (chart.options.plugins.zoom as Record<string, unknown>).onZoomComplete =
+          ({ chart: zoomedChart }: { chart: Chart }) =>
+            notifyRangeChange(zoomedChart);
+        (chart.options.plugins.zoom as Record<string, unknown>).onPanComplete =
+          ({ chart: pannedChart }: { chart: Chart }) =>
+            notifyRangeChange(pannedChart);
+      }
+
       resizeObserver =
         typeof ResizeObserver !== "undefined"
           ? new ResizeObserver(() => chart.resize())
@@ -523,10 +557,7 @@ function MinuteChart({
       return;
     }
 
-    const dataset = chart.data.datasets[0] as ChartDataset<
-      "candlestick",
-      CandlestickDataPoint[]
-    >;
+    const dataset = chart.data.datasets[0] as CandlestickDataset;
 
     if (!data.length) {
       dataset.data = [];
@@ -538,8 +569,13 @@ function MinuteChart({
     dataset.data = toCandlestickPoints(data);
 
     if (initialRenderRef.current) {
-      if (typeof chart.resetZoom === "function") {
-        chart.resetZoom();
+      if (
+        typeof (chart as unknown as Record<string, unknown>).resetZoom ===
+        "function"
+      ) {
+        (
+          (chart as unknown as Record<string, unknown>).resetZoom as () => void
+        )();
       }
       chart.update("none");
       initialRenderRef.current = false;
@@ -639,7 +675,12 @@ export default function Home() {
       buildMetric("시가", latestCandle.open, latestBinanceCandle.open, "price"),
       buildMetric("고가", latestCandle.high, latestBinanceCandle.high, "price"),
       buildMetric("저가", latestCandle.low, latestBinanceCandle.low, "price"),
-      buildMetric("종가", latestCandle.close, latestBinanceCandle.close, "price"),
+      buildMetric(
+        "종가",
+        latestCandle.close,
+        latestBinanceCandle.close,
+        "price"
+      ),
       buildMetric(
         "거래량",
         latestCandle.volume,
@@ -834,7 +875,9 @@ export default function Home() {
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch Binance candles: ${response.status}`);
+          throw new Error(
+            `Failed to fetch Binance candles: ${response.status}`
+          );
         }
 
         const payload = (await response.json()) as {
@@ -974,7 +1017,9 @@ export default function Home() {
             return;
           }
 
-          const payload = result.data?.klineUpdated as KlineSubModel | undefined;
+          const payload = result.data?.klineUpdated as
+            | KlineSubModel
+            | undefined;
           if (!payload) {
             return;
           }
@@ -1074,14 +1119,16 @@ export default function Home() {
 
   const intervalSelectValue =
     intervalMode === "auto" ? "auto" : String(intervalMode);
-  const graphQlStatusClass = isStreaming ? styles.connected : styles.disconnected;
+  const graphQlStatusClass = isStreaming
+    ? styles.connected
+    : styles.disconnected;
   const graphQlStatusText = isStreaming ? "실시간 연결됨" : "연결 대기 중";
   const binanceStatusClass =
     binanceStatus === "connected"
       ? styles.connected
       : binanceStatus === "connecting"
-        ? styles.pending
-        : styles.disconnected;
+      ? styles.pending
+      : styles.disconnected;
   const binanceStatusText = (() => {
     switch (binanceStatus) {
       case "connected":
@@ -1223,23 +1270,24 @@ export default function Home() {
             <ul className={styles.differenceList}>
               {differenceSummary.metrics.map((metric) => {
                 const formatter =
-                  metric.formatter === "price" ? priceFormatter : volumeFormatter;
+                  metric.formatter === "price"
+                    ? priceFormatter
+                    : volumeFormatter;
                 const formattedLocal = formatter.format(metric.localValue);
                 const formattedBinance = formatter.format(metric.binanceValue);
                 const formattedDiff = formatter.format(metric.diff);
                 const formattedPercent =
                   metric.percent === null
                     ? null
-                    : `${metric.percent >= 0 ? "+" : ""}${percentFormatter.format(
-                        Math.abs(metric.percent)
-                      )}%`;
+                    : `${
+                        metric.percent >= 0 ? "+" : ""
+                      }${percentFormatter.format(Math.abs(metric.percent))}%`;
 
                 return (
                   <li key={metric.label}>
                     <strong>{metric.label}</strong>
                     <span>
-                      로컬 {formattedLocal} · Binance {formattedBinance}
-                      {" "}
+                      로컬 {formattedLocal} · Binance {formattedBinance}{" "}
                       <em>
                         ({metric.diff >= 0 ? "+" : ""}
                         {formattedDiff}
@@ -1253,15 +1301,13 @@ export default function Home() {
                 <strong>캔들 시각</strong>
                 <span>
                   로컬 {timeFormatter.format(differenceSummary.localOpenTime)} /
-                  Binance {timeFormatter.format(
-                    differenceSummary.binanceOpenTime
-                  )}
-                  {" "}
+                  Binance{" "}
+                  {timeFormatter.format(differenceSummary.binanceOpenTime)}{" "}
                   {differenceSummary.timeDiffMinutes === 0
                     ? "(동일)"
-                    : `(${Math.abs(
-                        differenceSummary.timeDiffMinutes
-                      ).toFixed(2)}분 ${
+                    : `(${Math.abs(differenceSummary.timeDiffMinutes).toFixed(
+                        2
+                      )}분 ${
                         differenceSummary.timeDiffMinutes > 0
                           ? "Binance가 앞섬"
                           : "Binance가 늦음"

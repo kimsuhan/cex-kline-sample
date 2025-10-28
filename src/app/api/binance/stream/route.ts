@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           controller.enqueue(encoder.encode(`: keep-alive\n\n`));
         }, 15000);
 
-        cleanup = client.ws.candles(symbol, interval, (candle) => {
+        cleanup = client.ws.candles(symbol, interval, (candle: any) => {
           send({
             candle: {
               startTime: candle.startTime,
