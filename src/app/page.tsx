@@ -68,7 +68,7 @@ const DEFAULT_INTERVAL_MINUTES = 1;
 const MAX_CANDLES = 500;
 const TARGET_BAR_COUNT = 180;
 const INTERVAL_OPTIONS = [1, 3, 5, 15, 30, 60, 120, 240];
-const BINANCE_INTERVAL_MAP: Record<number, string> = {
+const BINANCE_INTERVAL_MAP = {
   1: "1m",
   3: "3m",
   5: "5m",
@@ -77,7 +77,8 @@ const BINANCE_INTERVAL_MAP: Record<number, string> = {
   60: "1h",
   120: "2h",
   240: "4h",
-};
+} as const;
+type BinanceInterval = (typeof BINANCE_INTERVAL_MAP)[keyof typeof BINANCE_INTERVAL_MAP];
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -800,7 +801,9 @@ export default function Home() {
       return;
     }
 
-    const intervalCode = BINANCE_INTERVAL_MAP[selectedInterval];
+    const intervalCode = BINANCE_INTERVAL_MAP[
+      selectedInterval as keyof typeof BINANCE_INTERVAL_MAP
+    ] as BinanceInterval | undefined;
 
     if (!intervalCode) {
       setBinanceCandles([]);

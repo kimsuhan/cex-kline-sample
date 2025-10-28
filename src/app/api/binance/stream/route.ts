@@ -1,10 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { CandleChartInterval } from "binance-api-node";
 import { getBinanceClient } from "../../../../server/binanceClient";
 
 const encoder = new TextEncoder();
 
 export const runtime = "nodejs";
+
+type BinanceInterval =
+  | "1m"
+  | "3m"
+  | "5m"
+  | "15m"
+  | "30m"
+  | "1h"
+  | "2h"
+  | "4h"
+  | "6h"
+  | "8h"
+  | "12h"
+  | "1d"
+  | "3d"
+  | "1w"
+  | "1M";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,7 +34,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const interval = intervalParam as CandleChartInterval;
+  const interval = intervalParam as BinanceInterval;
 
   try {
     const client = getBinanceClient();
