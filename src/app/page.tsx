@@ -138,8 +138,36 @@ const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
   minute: "2-digit",
 });
 
-// 분봉 간격에 따른 Chart.js 시간 단위 결정
-const getTimeUnit = (intervalMinutes: number): "minute" | "hour" => {
+// 데이터 범위를 분석하여 적절한 시간 단위 결정
+const getTimeUnitFromData = (
+  data: CandlestickDataPoint[]
+): "minute" | "hour" | "day" => {
+  if (data.length === 0) {
+    return "minute";
+  }
+
+  const minTime = Math.min(...data.map((d) => d.x));
+  const maxTime = Math.max(...data.map((d) => d.x));
+  const timeRange = maxTime - minTime;
+
+  // 시간 범위에 따라 적절한 단위 선택
+  const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
+  const oneDay = 24 * oneHour; // 1일 (밀리초)
+
+  if (timeRange <= oneHour * 12) {
+    // 12시간 이내
+    return "minute";
+  } else if (timeRange <= oneDay * 7) {
+    // 7일 이내
+    return "hour";
+  } else {
+    // 7일 초과
+    return "day";
+  }
+};
+
+// 분봉 간격에 따른 Chart.js 시간 단위 결정 (fallback)
+const getTimeUnit = (intervalMinutes: number): "minute" | "hour" | "day" => {
   if (intervalMinutes <= 5) {
     return "minute";
   } else if (intervalMinutes <= 30) {
@@ -508,8 +536,8 @@ function mapBinanceStreamCandle(
   } satisfies Candle;
 }
 
-const toCandlestickPoints = (candles: Candle[]): CandlestickDataPoint[] =>
-  candles.map((candle) => ({
+const toCandlestickPoints = (candles: Candle[]): CandlestickDataPoint[] => {
+  const points = candles.map((candle) => ({
     x: candle.openTime,
     o: candle.open,
     h: candle.high,
@@ -517,6 +545,20 @@ const toCandlestickPoints = (candles: Candle[]): CandlestickDataPoint[] =>
     c: candle.close,
     v: candle.volume ?? 0,
   }));
+
+  // 시간 범위가 너무 넓은 경우 최근 데이터만 사용
+  if (points.length > 0) {
+    const now = Date.now();
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30일
+    const filteredPoints = points.filter((point) => now - point.x <= maxAge);
+
+    if (filteredPoints.length > 0) {
+      return filteredPoints;
+    }
+  }
+
+  return points;
+};
 
 type MinuteChartProps = {
   data: Candle[];
@@ -628,7 +670,9 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
                 displayFormats: {
                   minute: "HH:mm",
                   hour: "MM/dd HH:mm",
+                  day: "MM/dd",
                 },
+                minUnit: "minute",
               },
               grid: {
                 color: "rgba(148, 163, 184, 0.08)",
@@ -637,6 +681,7 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
                 color: "rgba(226, 232, 240, 0.65)",
                 maxRotation: 0,
                 source: "data",
+                maxTicksLimit: 10,
               },
               border: {
                 color: "rgba(148, 163, 184, 0.2)",
@@ -714,9 +759,20 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
     dataset.label = symbol ? `${symbol} ${intervalMinutes}분봉` : dataset.label;
     dataset.data = toCandlestickPoints(data);
 
-    // 분봉 간격이 변경되었을 때 시간 축 설정 업데이트
+    // 분봉 간격이 변경되었을 때 차트 재생성
     if (lastIntervalRef.current !== intervalMinutes) {
-      const timeUnit = getTimeUnit(intervalMinutes);
+      // 차트를 완전히 재생성하여 시간 축 설정을 새로 적용
+      chart.destroy();
+      chartRef.current = null;
+      initialRenderRef.current = true;
+      lastSymbolRef.current = null;
+      lastIntervalRef.current = null;
+      return; // 차트가 재생성되므로 여기서 종료
+    }
+
+    // 데이터 범위에 맞는 시간 단위 자동 선택
+    if (data.length > 0) {
+      const timeUnit = getTimeUnitFromData(toCandlestickPoints(data));
       const timeDisplayFormat = getTimeDisplayFormat(intervalMinutes);
 
       if (chart.options.scales?.x && "time" in chart.options.scales.x) {
