@@ -138,6 +138,32 @@ const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
   minute: "2-digit",
 });
 
+// 분봉 간격에 따른 Chart.js 시간 단위 결정
+const getTimeUnit = (intervalMinutes: number): "minute" | "hour" => {
+  if (intervalMinutes <= 5) {
+    return "minute";
+  } else if (intervalMinutes <= 30) {
+    return "minute";
+  } else if (intervalMinutes <= 120) {
+    return "hour";
+  } else {
+    return "hour";
+  }
+};
+
+// 분봉 간격에 따른 시간 표시 형식 결정
+const getTimeDisplayFormat = (intervalMinutes: number): string => {
+  if (intervalMinutes <= 5) {
+    return "HH:mm";
+  } else if (intervalMinutes <= 30) {
+    return "HH:mm";
+  } else if (intervalMinutes <= 120) {
+    return "MM/dd HH:mm";
+  } else {
+    return "MM/dd HH:mm";
+  }
+};
+
 // Custom styles for react-select to match existing design
 const customSelectStyles = {
   control: (base: any, state: any) => ({
@@ -597,10 +623,11 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
             x: {
               type: "time",
               time: {
-                unit: "minute",
-                tooltipFormat: "HH:mm",
+                unit: getTimeUnit(intervalMinutes),
+                tooltipFormat: getTimeDisplayFormat(intervalMinutes),
                 displayFormats: {
                   minute: "HH:mm",
+                  hour: "MM/dd HH:mm",
                 },
               },
               grid: {
@@ -656,6 +683,7 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
       lastSymbolRef.current = null;
       lastIntervalRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -685,6 +713,17 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
 
     dataset.label = symbol ? `${symbol} ${intervalMinutes}분봉` : dataset.label;
     dataset.data = toCandlestickPoints(data);
+
+    // 분봉 간격이 변경되었을 때 시간 축 설정 업데이트
+    if (lastIntervalRef.current !== intervalMinutes) {
+      const timeUnit = getTimeUnit(intervalMinutes);
+      const timeDisplayFormat = getTimeDisplayFormat(intervalMinutes);
+
+      if (chart.options.scales?.x && "time" in chart.options.scales.x) {
+        (chart.options.scales.x as any).time.unit = timeUnit;
+        (chart.options.scales.x as any).time.tooltipFormat = timeDisplayFormat;
+      }
+    }
 
     if (initialRenderRef.current) {
       if (
