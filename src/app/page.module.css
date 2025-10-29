@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  padding: 48px 20px 64px;
+  padding: 100px 20px 64px; /* 상태 바 높이만큼 상단 패딩 증가 */
   background: radial-gradient(
     circle at top left,
     #1f2a44,
@@ -59,6 +59,94 @@
   justify-content: flex-end;
 }
 
+.symbolSelectorContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.symbolActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.smallButton {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #60a5fa;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.smallButton:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.smallButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.smallButtonDanger {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #fb7185;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.smallButtonDanger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.smallButtonDanger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.smallButtonSuccess {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #34d399;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.smallButtonSuccess:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.smallButtonSuccess:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.messagesContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .selectorGroup > .selector {
   min-width: 180px;
 }
@@ -84,6 +172,302 @@
 .selector select:focus {
   outline: 2px solid rgba(96, 165, 250, 0.6);
   outline-offset: 1px;
+}
+
+/* React Select container styling */
+.selector :global(.react-select-container) {
+  width: 100%;
+}
+
+.selector :global(.react-select__control) {
+  background: rgba(15, 30, 57, 0.9) !important;
+  border: 1px solid rgba(61, 86, 146, 0.8) !important;
+  border-radius: 8px !important;
+  min-height: 42px !important;
+  box-shadow: none !important;
+}
+
+.selector :global(.react-select__control:hover) {
+  border-color: rgba(61, 86, 146, 0.8) !important;
+}
+
+.selector :global(.react-select__control--is-focused) {
+  border-color: rgba(96, 165, 250, 0.6) !important;
+  outline: 2px solid rgba(96, 165, 250, 0.6) !important;
+  outline-offset: 1px !important;
+}
+
+.selector :global(.react-select__value-container) {
+  padding: 10px 12px !important;
+  color: #f8fafc !important;
+}
+
+.selector :global(.react-select__input) {
+  color: #f8fafc !important;
+}
+
+.selector :global(.react-select__single-value) {
+  color: #f8fafc !important;
+  font-size: 1rem !important;
+}
+
+.selector :global(.react-select__placeholder) {
+  color: rgba(148, 163, 184, 0.6) !important;
+}
+
+.selector :global(.react-select__menu) {
+  background-color: rgba(15, 30, 57, 0.95) !important;
+  border: 1px solid rgba(61, 86, 146, 0.8) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(6px) !important;
+  box-shadow: 0 20px 45px -24px rgba(15, 23, 42, 0.9) !important;
+}
+
+.selector :global(.react-select__menu-list) {
+  padding: 8px !important;
+  max-height: 200px !important;
+}
+
+.selector :global(.react-select__option) {
+  background-color: transparent !important;
+  color: #f8fafc !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  margin: 2px 0 !important;
+  cursor: pointer !important;
+}
+
+.selector :global(.react-select__option:hover) {
+  background-color: rgba(96, 165, 250, 0.1) !important;
+}
+
+.selector :global(.react-select__option--is-focused) {
+  background-color: rgba(96, 165, 250, 0.1) !important;
+}
+
+.selector :global(.react-select__option--is-selected) {
+  background-color: rgba(96, 165, 250, 0.2) !important;
+}
+
+.selector :global(.react-select__indicator-separator) {
+  display: none !important;
+}
+
+.selector :global(.react-select__dropdown-indicator) {
+  color: rgba(148, 163, 184, 0.8) !important;
+}
+
+.selector :global(.react-select__dropdown-indicator:hover) {
+  color: rgba(148, 163, 184, 1) !important;
+}
+
+.selector :global(.react-select__clear-indicator) {
+  color: rgba(148, 163, 184, 0.8) !important;
+}
+
+.selector :global(.react-select__clear-indicator:hover) {
+  color: rgba(148, 163, 184, 1) !important;
+}
+
+.symbolMessage {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #34d399;
+}
+
+.indexMessage {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: rgba(10, 17, 34, 0.95);
+  border: 1px solid rgba(30, 41, 69, 0.8);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(30, 41, 69, 0.5);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.modalCloseButton {
+  background: none;
+  border: none;
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalCloseButton:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #f8fafc;
+}
+
+.modalBody {
+  padding: 20px 24px;
+}
+
+.modalInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalInputGroup label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.modalInput {
+  background: rgba(15, 30, 57, 0.9);
+  border: 1px solid rgba(61, 86, 146, 0.8);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #f8fafc;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modalInput:focus {
+  border-color: rgba(96, 165, 250, 0.6);
+  outline: 2px solid rgba(96, 165, 250, 0.6);
+  outline-offset: 1px;
+}
+
+.modalInput::placeholder {
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.modalInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalMessage {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #34d399;
+}
+
+.modalFooter {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px 24px;
+  border-top: 1px solid rgba(30, 41, 69, 0.5);
+}
+
+.modalButtonSecondary {
+  background: rgba(71, 85, 105, 0.2);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalButtonSecondary:hover:not(:disabled) {
+  background: rgba(71, 85, 105, 0.3);
+  border-color: rgba(71, 85, 105, 0.6);
+}
+
+.modalButtonSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalButtonPrimary {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: #34d399;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalButtonPrimary:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.modalButtonPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .chartCard,
@@ -394,5 +778,140 @@
 
   .ohlcvItem {
     min-width: 50px;
+  }
+}
+
+/* 서버 상태 바 스타일 */
+.statusBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #065f46, #047857, #059669);
+  color: white;
+  padding: 12px 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.statusBarContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.statusBarLabel {
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.statusBarText {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  animation: scrollText 25s linear infinite;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 4px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.statusItem {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin: 0 2px;
+}
+
+.statusUp {
+  color: #ffffff;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.statusDown {
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-weight: 700;
+}
+
+.statusLoading {
+  color: #ffffff;
+  font-style: italic;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* 텍스트가 길 때 흘러가는 애니메이션 */
+@keyframes scrollText {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* 호버 시 애니메이션 일시정지 */
+.statusBar:hover .statusBarText {
+  animation-play-state: paused;
+}
+
+/* 상태 아이템 호버 효과 */
+.statusItem:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+  .statusBarContent {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .statusBarLabel {
+    font-size: 0.9rem;
+  }
+
+  .statusItem {
+    font-size: 0.8rem;
+  }
+
+  .statusBarText {
+    animation-duration: 30s;
+  }
+}
+
+@media (max-width: 480px) {
+  .statusBar {
+    padding: 10px 0;
+  }
+
+  .statusBarContent {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .statusBarLabel {
+    font-size: 0.85rem;
+  }
+
+  .statusItem {
+    font-size: 0.75rem;
+    padding: 1px 3px;
   }
 }

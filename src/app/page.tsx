@@ -4,6 +4,7 @@ import { Chart, type ChartDataset } from "chart.js";
 import { createClient, type Client } from "graphql-ws";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Select, { type SingleValue } from "react-select";
 import { ensureFinancialChartRegistered } from "./lib/registerFinancialChart";
 import styles from "./page.module.css";
 
@@ -13,6 +14,7 @@ type CandlestickDataPoint = {
   h: number; // High value
   l: number; // Low value
   c: number; // Close value
+  v: number; // Volume value
 };
 
 // Extended dataset type for candlestick charts
@@ -43,6 +45,11 @@ type GraphQLSymbol = {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+};
+
+type SelectOption = {
+  value: string;
+  label: string;
 };
 
 type KlineModel = {
@@ -85,6 +92,16 @@ type BinanceStreamCandlePayload = {
   volume: string;
 };
 
+// Health API 관련 타입 정의
+type ServerStatus = {
+  name: string;
+  status: "up" | "down" | "unknown";
+};
+
+type HealthResponse = {
+  info: Record<string, { status: string }>;
+};
+
 const DEFAULT_INTERVAL_MINUTES = 1;
 const MAX_CANDLES = 500;
 const INTERVAL_OPTIONS = [1, 3, 5, 15, 30, 60, 120, 240];
@@ -121,11 +138,126 @@ const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
   minute: "2-digit",
 });
 
+// Custom styles for react-select to match existing design
+const customSelectStyles = {
+  control: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: "rgba(15, 30, 57, 0.9)",
+    border: "1px solid rgba(61, 86, 146, 0.8)",
+    borderRadius: "8px",
+    minHeight: "42px",
+    boxShadow: "none",
+    "&:hover": {
+      borderColor: "rgba(61, 86, 146, 0.8)",
+    },
+    ...(state.isFocused && {
+      borderColor: "rgba(96, 165, 250, 0.6)",
+      outline: "2px solid rgba(96, 165, 250, 0.6)",
+      outlineOffset: "1px",
+    }),
+  }),
+  valueContainer: (base: any) => ({
+    ...base,
+    padding: "10px 12px",
+    color: "#f8fafc",
+  }),
+  input: (base: any) => ({
+    ...base,
+    color: "#f8fafc",
+  }),
+  singleValue: (base: any) => ({
+    ...base,
+    color: "#f8fafc",
+    fontSize: "1rem",
+  }),
+  placeholder: (base: any) => ({
+    ...base,
+    color: "rgba(148, 163, 184, 0.6)",
+  }),
+  menu: (base: any) => ({
+    ...base,
+    backgroundColor: "rgba(15, 30, 57, 0.95)",
+    border: "1px solid rgba(61, 86, 146, 0.8)",
+    borderRadius: "8px",
+    backdropFilter: "blur(6px)",
+    boxShadow: "0 20px 45px -24px rgba(15, 23, 42, 0.9)",
+  }),
+  menuList: (base: any) => ({
+    ...base,
+    padding: "8px",
+    maxHeight: "200px",
+  }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isSelected
+      ? "rgba(96, 165, 250, 0.2)"
+      : state.isFocused
+      ? "rgba(96, 165, 250, 0.1)"
+      : "transparent",
+    color: "#f8fafc",
+    borderRadius: "6px",
+    padding: "8px 12px",
+    margin: "2px 0",
+    cursor: "pointer",
+    "&:hover": {
+      backgroundColor: "rgba(96, 165, 250, 0.1)",
+    },
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+  dropdownIndicator: (base: any) => ({
+    ...base,
+    color: "rgba(148, 163, 184, 0.8)",
+    "&:hover": {
+      color: "rgba(148, 163, 184, 1)",
+    },
+  }),
+  clearIndicator: (base: any) => ({
+    ...base,
+    color: "rgba(148, 163, 184, 0.8)",
+    "&:hover": {
+      color: "rgba(148, 163, 184, 1)",
+    },
+  }),
+};
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:58001";
+
+// Health API 호출 함수
+async function fetchHealthStatus(): Promise<ServerStatus[]> {
+  try {
+    const response = await fetch("http://localhost:58001/health");
+    if (!response.ok) {
+      throw new Error(`Health API failed with status ${response.status}`);
+    }
+    const data = (await response.json()) as HealthResponse;
+    console.log(data);
+
+    return Object.entries(data.info).map(([key, value]) => ({
+      name: key.toUpperCase(),
+      status: value.status === "up" ? "up" : "down",
+    }));
+  } catch (error) {
+    console.error("Failed to fetch health status", error);
+    return [];
+  }
+}
 
 type GraphQLResponse<T> = {
   data?: T;
   errors?: { message: string }[];
+};
+
+type SymbolInsertInput = {
+  symbol: string;
+};
+
+type SymbolModel = {
+  id: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 async function fetchGraphQL<T>(
@@ -156,6 +288,41 @@ async function fetchGraphQL<T>(
   }
 
   return payload.data;
+}
+
+async function insertSymbol(input: SymbolInsertInput): Promise<SymbolModel> {
+  const data = await fetchGraphQL<{ insertSymbol: SymbolModel }>(
+    `mutation InsertSymbol($input: SymbolInsertInput!) {
+      insertSymbol(input: $input) {
+        id
+        is_active
+        created_at
+        updated_at
+      }
+    }`,
+    { input }
+  );
+  return data.insertSymbol;
+}
+
+async function deleteSymbol(id: string): Promise<boolean> {
+  const data = await fetchGraphQL<{ deleteSymbol: boolean }>(
+    `mutation DeleteSymbol($id: String!) {
+      deleteSymbol(id: $id)
+    }`,
+    { id }
+  );
+  return data.deleteSymbol;
+}
+
+async function indexKline(symbol: string): Promise<boolean> {
+  const data = await fetchGraphQL<{ indexKline: boolean }>(
+    `mutation IndexKline($symbol: String!) {
+      indexKline(symbol: $symbol)
+    }`,
+    { symbol }
+  );
+  return data.indexKline;
 }
 
 const buildWsUrl = () => {
@@ -322,6 +489,7 @@ const toCandlestickPoints = (candles: Candle[]): CandlestickDataPoint[] =>
     h: candle.high,
     l: candle.low,
     c: candle.close,
+    v: candle.volume ?? 0,
   }));
 
 type MinuteChartProps = {
@@ -401,6 +569,7 @@ function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
                     `고가: ${priceFormatter.format(raw.h)}`,
                     `저가: ${priceFormatter.format(raw.l)}`,
                     `종가: ${priceFormatter.format(raw.c)}`,
+                    `거래: ${volumeFormatter.format(raw.v)}`,
                   ];
                 },
               },
@@ -563,6 +732,17 @@ export default function Home() {
   const [binanceErrorMessage, setBinanceErrorMessage] = useState<string | null>(
     null
   );
+  const [isDeletingSymbol, setIsDeletingSymbol] = useState<string | null>(null);
+  const [symbolMessage, setSymbolMessage] = useState<string | null>(null);
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [indexMessage, setIndexMessage] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newSymbolInput, setNewSymbolInput] = useState("");
+  const [isAddingSymbol, setIsAddingSymbol] = useState(false);
+
+  // 서버 상태 관련 state
+  const [serverStatuses, setServerStatuses] = useState<ServerStatus[]>([]);
+  const [isLoadingHealth, setIsLoadingHealth] = useState(true);
 
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -574,6 +754,23 @@ export default function Home() {
   const binanceSymbol = useMemo(
     () => normalizeBinanceSymbol(selectedSymbol),
     [selectedSymbol]
+  );
+
+  // Convert symbolOptions to react-select format
+  const selectOptions = useMemo(
+    () =>
+      symbolOptions.map((symbol) => ({
+        value: symbol.id,
+        label: symbol.id,
+      })),
+    [symbolOptions]
+  );
+
+  // Get current selected option
+  const selectedOption = useMemo(
+    () =>
+      selectOptions.find((option) => option.value === selectedSymbol) || null,
+    [selectOptions, selectedSymbol]
   );
   const differenceSummary = useMemo(() => {
     if (!latestCandle || !latestBinanceCandle) {
@@ -704,6 +901,24 @@ export default function Home() {
         refreshTimeoutRef.current = null;
       }
     };
+  }, []);
+
+  // Health API 주기적 호출
+  useEffect(() => {
+    const fetchHealth = async () => {
+      setIsLoadingHealth(true);
+      const statuses = await fetchHealthStatus();
+      setServerStatuses(statuses);
+      setIsLoadingHealth(false);
+    };
+
+    // 초기 호출
+    fetchHealth();
+
+    // 5초마다 호출
+    const interval = setInterval(fetchHealth, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -1034,9 +1249,132 @@ export default function Home() {
     };
   }, [queueSilentRefresh, selectedInterval, selectedSymbol]);
 
-  const handleSymbolChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextSymbol = event.target.value;
-    setSelectedSymbol(nextSymbol);
+  const handleSymbolChange = (selectedOption: SingleValue<SelectOption>) => {
+    if (selectedOption) {
+      setSelectedSymbol(selectedOption.value);
+    }
+  };
+
+  const handleAddSymbol = async () => {
+    if (!newSymbolInput.trim()) {
+      setSymbolMessage("심볼 이름을 입력해주세요.");
+      return;
+    }
+
+    setIsAddingSymbol(true);
+    setSymbolMessage(null);
+
+    try {
+      const newSymbol = await insertSymbol({ symbol: newSymbolInput.trim() });
+
+      // Add to symbol options
+      setSymbolOptions((prev) => [...prev, newSymbol]);
+      setNewSymbolInput("");
+      setIsAddModalOpen(false);
+      setSymbolMessage(`심볼 "${newSymbol.id}"이 성공적으로 추가되었습니다.`);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSymbolMessage(null), 3000);
+    } catch (error) {
+      console.error("Failed to add symbol", error);
+      setSymbolMessage("심볼 추가에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsAddingSymbol(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsAddModalOpen(false);
+    setNewSymbolInput("");
+    setSymbolMessage(null);
+  };
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isAddModalOpen) {
+        handleCloseModal();
+      }
+    };
+
+    if (isAddModalOpen) {
+      document.addEventListener("keydown", handleEscKey);
+      return () => document.removeEventListener("keydown", handleEscKey);
+    }
+  }, [isAddModalOpen]);
+
+  const handleDeleteSymbol = async (symbolId: string) => {
+    setIsDeletingSymbol(symbolId);
+    setSymbolMessage(null);
+
+    try {
+      const success = await deleteSymbol(symbolId);
+
+      if (success) {
+        // Remove from symbol options
+        setSymbolOptions((prev) =>
+          prev.filter((symbol) => symbol.id !== symbolId)
+        );
+
+        // If deleted symbol was selected, clear selection
+        if (symbolId === selectedSymbol) {
+          setSelectedSymbol("");
+        }
+
+        setSymbolMessage(`심볼 "${symbolId}"이 성공적으로 삭제되었습니다.`);
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setSymbolMessage(null), 3000);
+      } else {
+        setSymbolMessage("심볼 삭제에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to delete symbol", error);
+      setSymbolMessage("심볼 삭제에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsDeletingSymbol(null);
+    }
+  };
+
+  const handleIndexKline = async () => {
+    if (!selectedSymbol) {
+      setIndexMessage("인덱싱할 심볼을 먼저 선택해주세요.");
+      return;
+    }
+
+    setIsIndexing(true);
+    setIndexMessage(null);
+
+    try {
+      const success = await indexKline(selectedSymbol);
+
+      if (success) {
+        setIndexMessage(
+          `"${selectedSymbol}" 심볼의 3개월치 분봉 데이터가 성공적으로 인덱싱되었습니다.`
+        );
+
+        // Refresh chart data after successful indexing
+        try {
+          const refreshedCandles = await fetchCandles(
+            selectedSymbol,
+            selectedInterval
+          );
+          applyCandles(refreshedCandles);
+        } catch (refreshError) {
+          console.error("Failed to refresh chart after indexing", refreshError);
+        }
+
+        // Clear success message after 5 seconds (longer for indexing)
+        setTimeout(() => setIndexMessage(null), 5000);
+      } else {
+        setIndexMessage("분봉 데이터 인덱싱에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to index kline data", error);
+      setIndexMessage("분봉 데이터 인덱싱에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsIndexing(false);
+    }
   };
 
   const handleIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -1072,30 +1410,82 @@ export default function Home() {
 
   return (
     <div className={styles.page}>
+      {/* 서버 상태 바 추가 */}
+      <div className={styles.statusBar}>
+        <div className={styles.statusBarContent}>
+          <div className={styles.statusBarText}>
+            {isLoadingHealth ? (
+              <span className={styles.statusLoading}>로딩 중...</span>
+            ) : (
+              serverStatuses.map((status, index) => (
+                <span
+                  style={{ marginRight: "10px" }}
+                  key={status.name}
+                  className={`${styles.statusItem} ${
+                    status.status === "up" ? styles.statusUp : styles.statusDown
+                  }`}
+                >
+                  {status.name}: {status.status === "up" ? "UP" : "DOWN"}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
       <main className={styles.container}>
         <header className={styles.header}>
           <div>
-            <h1 className={styles.title}>분봉 구독 샘플</h1>
-            <p className={styles.subtitle}>
-              GraphQL Subscription 흐름을 시각화한 목업입니다. API 엔드포인트는{" "}
-              <strong>{apiUrl}</strong> 으로 설정되어 있습니다.
-            </p>
+            <h1 className={styles.title}>KLine</h1>
           </div>
           <div className={styles.selectorGroup}>
-            <label className={styles.selector}>
-              <span>심볼 선택</span>
-              <select
-                value={selectedSymbol}
-                onChange={handleSymbolChange}
-                disabled={symbolOptions.length === 0}
-              >
-                {symbolOptions.map((symbol) => (
-                  <option key={symbol.id} value={symbol.id}>
-                    {symbol.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className={styles.symbolSelectorContainer}>
+              <label className={styles.selector}>
+                <span>심볼 선택</span>
+                <Select
+                  value={selectedOption}
+                  onChange={handleSymbolChange}
+                  options={selectOptions}
+                  isSearchable={true}
+                  isClearable={false}
+                  isDisabled={symbolOptions.length === 0}
+                  placeholder="심볼을 선택하세요"
+                  noOptionsMessage={() => "검색 결과가 없습니다"}
+                  styles={customSelectStyles}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                />
+              </label>
+              <div className={styles.symbolActions}>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className={styles.smallButtonSuccess}
+                  title="새 심볼 추가"
+                >
+                  추가
+                </button>
+                <button
+                  onClick={handleIndexKline}
+                  disabled={isIndexing || !selectedSymbol}
+                  className={styles.smallButton}
+                  title="3개월치 분봉 데이터 인덱싱"
+                >
+                  {isIndexing ? "인덱싱 중..." : "인덱싱"}
+                </button>
+                <button
+                  onClick={() =>
+                    selectedSymbol && handleDeleteSymbol(selectedSymbol)
+                  }
+                  disabled={
+                    isDeletingSymbol === selectedSymbol || !selectedSymbol
+                  }
+                  className={styles.smallButtonDanger}
+                  title="현재 선택된 심볼 삭제"
+                >
+                  {isDeletingSymbol === selectedSymbol ? "삭제 중..." : "삭제"}
+                </button>
+              </div>
+            </div>
             <label className={styles.selector}>
               <span>분봉</span>
               <select
@@ -1111,6 +1501,71 @@ export default function Home() {
             </label>
           </div>
         </header>
+
+        {/* Messages */}
+        {(symbolMessage || indexMessage) && (
+          <div className={styles.messagesContainer}>
+            {symbolMessage && (
+              <div className={styles.symbolMessage}>{symbolMessage}</div>
+            )}
+            {indexMessage && (
+              <div className={styles.indexMessage}>{indexMessage}</div>
+            )}
+          </div>
+        )}
+
+        {/* Add Symbol Modal */}
+        {isAddModalOpen && (
+          <div className={styles.modalOverlay} onClick={handleCloseModal}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>새 심볼 추가</h3>
+                <button
+                  onClick={handleCloseModal}
+                  className={styles.modalCloseButton}
+                  title="닫기"
+                >
+                  ×
+                </button>
+              </div>
+              <div className={styles.modalBody}>
+                <div className={styles.modalInputGroup}>
+                  <label htmlFor="symbolInput">심볼 이름</label>
+                  <input
+                    id="symbolInput"
+                    type="text"
+                    value={newSymbolInput}
+                    onChange={(e) => setNewSymbolInput(e.target.value)}
+                    placeholder="심볼 이름을 입력하세요 (예: BTCUSDT)"
+                    className={styles.modalInput}
+                    onKeyPress={(e) => e.key === "Enter" && handleAddSymbol()}
+                    disabled={isAddingSymbol}
+                    autoFocus
+                  />
+                </div>
+                {symbolMessage && (
+                  <div className={styles.modalMessage}>{symbolMessage}</div>
+                )}
+              </div>
+              <div className={styles.modalFooter}>
+                <button
+                  onClick={handleCloseModal}
+                  className={styles.modalButtonSecondary}
+                  disabled={isAddingSymbol}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleAddSymbol}
+                  disabled={isAddingSymbol || !newSymbolInput.trim()}
+                  className={styles.modalButtonPrimary}
+                >
+                  {isAddingSymbol ? "추가 중..." : "추가"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <section className={styles.chartCard}>
           <div className={styles.chartHeader}>
