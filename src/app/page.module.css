@@ -1,7 +1,12 @@
 .page {
   min-height: 100vh;
   padding: 48px 20px 64px;
-  background: radial-gradient(circle at top left, #1f2a44, #0b1120 50%, #060912 100%);
+  background: radial-gradient(
+    circle at top left,
+    #1f2a44,
+    #0b1120 50%,
+    #060912 100%
+  );
   color: #f8fafc;
 }
 
@@ -186,6 +191,47 @@
   color: rgba(148, 163, 184, 0.8);
 }
 
+.ohlcvGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  min-width: 600px;
+}
+
+.ohlcvItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 30, 57, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 8px;
+  padding: 8px 6px;
+  min-width: 80px;
+}
+
+.ohlcvLabel {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.8);
+  font-weight: 500;
+}
+
+.ohlcvValue {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f0fdf4;
+  text-align: center;
+  word-break: break-all;
+}
+
+.ohlcvTime {
+  font-size: 0.8rem;
+  color: rgba(148, 163, 184, 0.8);
+  text-align: center;
+}
+
 .subscriptionHeader {
   display: flex;
   justify-content: space-between;
@@ -233,7 +279,6 @@
   color: #fda4af;
   font-size: 0.9rem;
 }
-
 
 .comparisonCard {
   background: rgba(10, 17, 34, 0.75);
@@ -306,6 +351,15 @@
     align-items: flex-start;
   }
 
+  .ohlcvGrid {
+    grid-template-columns: repeat(3, 1fr);
+    min-width: 300px;
+  }
+
+  .ohlcvItem {
+    min-width: 60px;
+  }
+
   .differenceList li {
     flex-direction: column;
     align-items: flex-start;
@@ -331,5 +385,14 @@
 
   .differenceList li strong {
     min-width: auto;
+  }
+
+  .ohlcvGrid {
+    grid-template-columns: repeat(2, 1fr);
+    min-width: 200px;
+  }
+
+  .ohlcvItem {
+    min-width: 50px;
   }
 }

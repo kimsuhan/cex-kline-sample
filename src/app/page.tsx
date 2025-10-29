@@ -87,7 +87,6 @@ type BinanceStreamCandlePayload = {
 
 const DEFAULT_INTERVAL_MINUTES = 1;
 const MAX_CANDLES = 500;
-const TARGET_BAR_COUNT = 180;
 const INTERVAL_OPTIONS = [1, 3, 5, 15, 30, 60, 120, 240];
 const BINANCE_INTERVAL_MAP = {
   1: "1m",
@@ -316,16 +315,6 @@ function mapBinanceStreamCandle(
   } satisfies Candle;
 }
 
-const pickIntervalForRange = (rangeMinutes: number): number => {
-  for (const option of INTERVAL_OPTIONS) {
-    if (rangeMinutes / option <= TARGET_BAR_COUNT) {
-      return option;
-    }
-  }
-
-  return INTERVAL_OPTIONS[INTERVAL_OPTIONS.length - 1];
-};
-
 const toCandlestickPoints = (candles: Candle[]): CandlestickDataPoint[] =>
   candles.map((candle) => ({
     x: candle.openTime,
@@ -339,28 +328,15 @@ type MinuteChartProps = {
   data: Candle[];
   symbol: string;
   intervalMinutes: number;
-  onZoomRangeChange?: (rangeMs: number) => void;
 };
 
-function MinuteChart({
-  data,
-  symbol,
-  intervalMinutes,
-  onZoomRangeChange,
-}: MinuteChartProps) {
+function MinuteChart({ data, symbol, intervalMinutes }: MinuteChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const initialRenderRef = useRef(true);
   const lastSymbolRef = useRef<string | null>(null);
   const lastIntervalRef = useRef<number | null>(null);
-  const zoomCallbackRef = useRef<typeof onZoomRangeChange | undefined>(
-    undefined
-  );
-
-  useEffect(() => {
-    zoomCallbackRef.current = onZoomRangeChange;
-  }, [onZoomRangeChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -373,21 +349,6 @@ function MinuteChart({
     let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
     let chartInstance: Chart | null = null;
-
-    const notifyRangeChange = (chart: Chart) => {
-      const callback = zoomCallbackRef.current;
-      if (!callback) {
-        return;
-      }
-
-      const xScale = chart.scales.x;
-      const min = (xScale?.min ?? null) as number | null;
-      const max = (xScale?.max ?? null) as number | null;
-
-      if (min !== null && max !== null) {
-        callback(max - min);
-      }
-    };
 
     const initializeChart = async () => {
       await ensureFinancialChartRegistered();
@@ -505,16 +466,6 @@ function MinuteChart({
       chartRef.current = chart;
       chartInstance = chart;
 
-      // Add zoom event listeners after chart creation
-      if (chart.options.plugins?.zoom) {
-        (chart.options.plugins.zoom as Record<string, unknown>).onZoomComplete =
-          ({ chart: zoomedChart }: { chart: Chart }) =>
-            notifyRangeChange(zoomedChart);
-        (chart.options.plugins.zoom as Record<string, unknown>).onPanComplete =
-          ({ chart: pannedChart }: { chart: Chart }) =>
-            notifyRangeChange(pannedChart);
-      }
-
       resizeObserver =
         typeof ResizeObserver !== "undefined"
           ? new ResizeObserver(() => chart.resize())
@@ -523,8 +474,6 @@ function MinuteChart({
       if (resizeObserver) {
         resizeObserver.observe(container);
       }
-
-      notifyRangeChange(chart);
     };
 
     void initializeChart();
@@ -582,18 +531,6 @@ function MinuteChart({
     } else {
       chart.update();
     }
-
-    setTimeout(() => {
-      const callback = zoomCallbackRef.current;
-      if (callback) {
-        const xScale = chart.scales.x;
-        const min = (xScale?.min ?? null) as number | null;
-        const max = (xScale?.max ?? null) as number | null;
-        if (min !== null && max !== null) {
-          callback(max - min);
-        }
-      }
-    }, 0);
   }, [data, symbol, intervalMinutes]);
 
   return (
@@ -616,7 +553,6 @@ export default function Home() {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [intervalMode, setIntervalMode] = useState<"auto" | number>("auto");
   const [selectedInterval, setSelectedInterval] = useState(
     DEFAULT_INTERVAL_MINUTES
   );
@@ -706,6 +642,12 @@ export default function Home() {
 
   const fetchCandles = useCallback(
     async (symbol: string, intervalMinutes: number) => {
+      const limit = MAX_CANDLES;
+      const endDate = new Date();
+      const startDate = new Date(
+        endDate.getTime() - intervalMinutes * limit * 60000
+      );
+
       const data = await fetchGraphQL<{ klines: KlineModel[] }>(
         `query Klines($input: KlineInput!) {
         klines(input: $input) {
@@ -719,7 +661,15 @@ export default function Home() {
           volume
         }
       }`,
-        { input: { symbol, intervalMin: intervalMinutes } }
+        {
+          input: {
+            symbol,
+            intervalMin: intervalMinutes,
+            limit,
+            start: startDate.toISOString(),
+            end: endDate.toISOString(),
+          },
+        }
       );
 
       return mapModelsToCandles(data.klines).slice(-MAX_CANDLES);
@@ -1089,36 +1039,14 @@ export default function Home() {
     setSelectedSymbol(nextSymbol);
   };
 
-  const handleIntervalModeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const { value } = event.target;
-    if (value === "auto") {
-      setIntervalMode("auto");
-      setSelectedInterval(DEFAULT_INTERVAL_MINUTES);
-    } else {
-      const nextInterval = Number(value);
-      setIntervalMode(nextInterval);
+  const handleIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextInterval = Number(event.target.value);
+    if (Number.isFinite(nextInterval)) {
       setSelectedInterval(nextInterval);
     }
   };
 
-  const handleZoomRangeChange = useCallback(
-    (rangeMs: number) => {
-      if (intervalMode !== "auto" || rangeMs <= 0 || candles.length === 0) {
-        return;
-      }
-
-      const rangeMinutes = rangeMs / 60000;
-      const nextInterval = pickIntervalForRange(rangeMinutes);
-
-      if (nextInterval !== selectedInterval) {
-        setSelectedInterval(nextInterval);
-      }
-    },
-    [candles.length, intervalMode, selectedInterval]
-  );
-
-  const intervalSelectValue =
-    intervalMode === "auto" ? "auto" : String(intervalMode);
+  const intervalSelectValue = String(selectedInterval);
   const graphQlStatusClass = isStreaming
     ? styles.connected
     : styles.disconnected;
@@ -1172,9 +1100,8 @@ export default function Home() {
               <span>분봉</span>
               <select
                 value={intervalSelectValue}
-                onChange={handleIntervalModeChange}
+                onChange={handleIntervalChange}
               >
-                <option value="auto">자동 (현재 {selectedInterval}분)</option>
                 {INTERVAL_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}분
@@ -1201,13 +1128,44 @@ export default function Home() {
               </div>
               {latestCandle && (
                 <div className={styles.priceSnapshot}>
-                  <span className={styles.priceLabel}>현재가</span>
-                  <strong className={styles.priceValue}>
-                    {priceFormatter.format(latestCandle.close)}
-                  </strong>
-                  <span className={styles.timeValue}>
-                    {timeFormatter.format(latestCandle.openTime)}
-                  </span>
+                  <div className={styles.ohlcvGrid}>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>시가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestCandle.open)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>고가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestCandle.high)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>저가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestCandle.low)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>종가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestCandle.close)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>거래량</span>
+                      <strong className={styles.ohlcvValue}>
+                        {volumeFormatter.format(latestCandle.volume)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>시간</span>
+                      <span className={styles.ohlcvTime}>
+                        {timeFormatter.format(latestCandle.openTime)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1217,7 +1175,6 @@ export default function Home() {
               data={candles}
               symbol={selectedSymbol}
               intervalMinutes={selectedInterval}
-              onZoomRangeChange={handleZoomRangeChange}
             />
           </div>
           {errorMessage && (
@@ -1241,13 +1198,44 @@ export default function Home() {
               </div>
               {latestBinanceCandle && (
                 <div className={styles.priceSnapshot}>
-                  <span className={styles.priceLabel}>현재가</span>
-                  <strong className={styles.priceValue}>
-                    {priceFormatter.format(latestBinanceCandle.close)}
-                  </strong>
-                  <span className={styles.timeValue}>
-                    {timeFormatter.format(latestBinanceCandle.openTime)}
-                  </span>
+                  <div className={styles.ohlcvGrid}>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>시가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestBinanceCandle.open)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>고가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestBinanceCandle.high)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>저가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestBinanceCandle.low)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>종가</span>
+                      <strong className={styles.ohlcvValue}>
+                        {priceFormatter.format(latestBinanceCandle.close)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>거래량</span>
+                      <strong className={styles.ohlcvValue}>
+                        {volumeFormatter.format(latestBinanceCandle.volume)}
+                      </strong>
+                    </div>
+                    <div className={styles.ohlcvItem}>
+                      <span className={styles.ohlcvLabel}>시간</span>
+                      <span className={styles.ohlcvTime}>
+                        {timeFormatter.format(latestBinanceCandle.openTime)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
