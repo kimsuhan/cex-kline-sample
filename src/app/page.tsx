@@ -739,6 +739,7 @@ export default function Home() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newSymbolInput, setNewSymbolInput] = useState("");
   const [isAddingSymbol, setIsAddingSymbol] = useState(false);
+  const [isLoadingSymbols, setIsLoadingSymbols] = useState(true);
 
   // 서버 상태 관련 state
   const [serverStatuses, setServerStatuses] = useState<ServerStatus[]>([]);
@@ -766,12 +767,15 @@ export default function Home() {
     [symbolOptions]
   );
 
-  // Get current selected option
-  const selectedOption = useMemo(
-    () =>
-      selectOptions.find((option) => option.value === selectedSymbol) || null,
-    [selectOptions, selectedSymbol]
-  );
+  // Get current selected option - ensure consistent initial value
+  const selectedOption = useMemo(() => {
+    if (isLoadingSymbols || selectOptions.length === 0) {
+      return null;
+    }
+    return (
+      selectOptions.find((option) => option.value === selectedSymbol) || null
+    );
+  }, [selectOptions, selectedSymbol, isLoadingSymbols]);
   const differenceSummary = useMemo(() => {
     if (!latestCandle || !latestBinanceCandle) {
       return null;
@@ -925,6 +929,7 @@ export default function Home() {
     let cancelled = false;
 
     const fetchSymbols = async () => {
+      setIsLoadingSymbols(true);
       try {
         const data = await fetchGraphQL<{ symbols: GraphQLSymbol[] }>(
           `query Symbols {
@@ -948,6 +953,10 @@ export default function Home() {
         console.error("Failed to fetch symbols", error);
         if (!cancelled) {
           setErrorMessage("심볼 목록을 불러오지 못했습니다.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSymbols(false);
         }
       }
     };
@@ -1417,7 +1426,7 @@ export default function Home() {
             {isLoadingHealth ? (
               <span className={styles.statusLoading}>로딩 중...</span>
             ) : (
-              serverStatuses.map((status, index) => (
+              serverStatuses.map((status) => (
                 <span
                   style={{ marginRight: "10px" }}
                   key={status.name}
@@ -1448,12 +1457,15 @@ export default function Home() {
                   options={selectOptions}
                   isSearchable={true}
                   isClearable={false}
-                  isDisabled={symbolOptions.length === 0}
-                  placeholder="심볼을 선택하세요"
+                  isDisabled={isLoadingSymbols || symbolOptions.length === 0}
+                  placeholder={
+                    isLoadingSymbols ? "로딩 중..." : "심볼을 선택하세요"
+                  }
                   noOptionsMessage={() => "검색 결과가 없습니다"}
                   styles={customSelectStyles}
                   className="react-select-container"
                   classNamePrefix="react-select"
+                  instanceId="symbol-select"
                 />
               </label>
               <div className={styles.symbolActions}>
